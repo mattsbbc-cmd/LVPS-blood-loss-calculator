@@ -165,6 +165,20 @@ details[open] summary { margin-bottom: 8px; }
 
   <p class="example" id="exampleNote" hidden>Example case loaded. Clear it before use.</p>
 
+  <section aria-labelledby="h-case">
+    <h2 id="h-case">Case</h2>
+    <div class="confirm" id="resetWrap">
+      <button type="button" class="ghost" id="resetBtn">Start new case</button>
+      <span class="hint">Clears this case. Swab types and calibrations are kept.</span>
+    </div>
+    <div class="confirm" id="resetConfirm" hidden>
+      <span>Clear all entries for this case?</span>
+      <button type="button" id="resetYes">Clear case</button>
+      <button type="button" class="quiet" id="resetNo">Cancel</button>
+    </div>
+  </section>
+
+
   <section aria-labelledby="h-cal" class="cal">
     <h2 id="h-cal">Calibrate swabs</h2>
     <p class="hint">Do this before first use, and every time a new box or brand of swab arrives. It takes about two minutes.</p>
@@ -287,24 +301,11 @@ details[open] summary { margin-bottom: 8px; }
     <p class="calwarn" id="repMsg" hidden></p>
   </section>
 
-  <section aria-labelledby="h-case">
-    <h2 id="h-case">Case</h2>
-    <div class="confirm" id="resetWrap">
-      <button type="button" class="ghost" id="resetBtn">Start new case</button>
-      <span class="hint">Keeps your swab types. Nothing identifying is stored.</span>
-    </div>
-    <div class="confirm" id="resetConfirm" hidden>
-      <span>Clear all entries for this case?</span>
-      <button type="button" id="resetYes">Clear case</button>
-      <button type="button" class="quiet" id="resetNo">Cancel</button>
-    </div>
-  </section>
-
   <section class="refs" aria-labelledby="h-ref">
     <h2 id="h-ref">Method and references</h2>
     <div class="formula">ABL = EBV × (PCV<sub>start</sub> − PCV<sub>min</sub>) ÷ ((PCV<sub>start</sub> + PCV<sub>min</sub>) ÷ 2)</div>
     <p style="margin:0">Progress bar colours are set by the service: green up to 5%, amber over 5–15%, red over 15% of estimated blood volume.</p>
-    <p style="margin:0">The allowable blood loss formula was derived in human patients. Gravimetric measurement has been validated in dogs. This tool supports clinical judgement and does not replace it. Version 1.7, October 2026.</p>
+    <p style="margin:0">The allowable blood loss formula was derived in human patients. Gravimetric measurement has been validated in dogs. This tool supports clinical judgement and does not replace it. Version 1.8, October 2026.</p>
     <ol>
       <li>Gross JB. Estimating allowable blood loss: corrected for dilution. <i>Anesthesiology</i> 1983;58(3):277–80. <a href="https://pubmed.ncbi.nlm.nih.gov/6829965/" target="_blank" rel="noopener">PubMed</a></li>
       <li>Lee MH et al. Quantification of surgical blood loss. <i>Vet Surg</i> 2006;35:388–93. <a href="https://dspace.library.uu.nl/handle/1874/20222" target="_blank" rel="noopener">Open access</a></li>
@@ -593,7 +594,7 @@ details[open] summary { margin-bottom: 8px; }
   });
 
   // ---------- PDF report ----------
-  var APP_VERSION = "1.7";
+  var APP_VERSION = "1.8";
   function d2(n) { return n < 10 ? "0" + n : "" + n; }
   function stamp(ms) { var d = new Date(ms); return d2(d.getDate()) + "/" + d2(d.getMonth() + 1) + "/" + d.getFullYear() + " " + d2(d.getHours()) + ":" + d2(d.getMinutes()); }
   function hhmm(ms) { var d = new Date(ms); return d2(d.getHours()) + ":" + d2(d.getMinutes()); }
@@ -706,7 +707,7 @@ details[open] summary { margin-bottom: 8px; }
 
   function repMsg(t, ok) { var m = $("repMsg"); m.textContent = t; m.hidden = !t; m.style.borderColor = ok ? "var(--ok)" : ""; m.style.color = ok ? "var(--ok)" : ""; }
   function repInfo() {
-    if (c.example) { repMsg("This is the example case. Tap Start new case below before recording a real patient."); return null; }
+    if (c.example) { repMsg("This is the example case. Tap Start new case at the top before recording a real patient."); return null; }
     var id = $("repId").value.trim();
     if (!id) { repMsg("Add the patient name and hospital number first."); $("repId").focus(); return null; }
     if (!window.TBL_PWA) { repMsg("Exporting works in the installed app. This preview page can't share or save files."); return null; }
