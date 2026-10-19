@@ -65,11 +65,17 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .fig b { display: block; font-family: var(--f-num); font-weight: 500; font-size: 1.9rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--blood); }
 .fig.small b { font-size: 1.25rem; color: var(--ink); }
 .fig small { display: block; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
-.meter { position: relative; height: 10px; border-radius: 5px; background: var(--chip); overflow: hidden; }
+.meter { position: relative; height: 16px; border-radius: 4px; background: var(--chip); overflow: hidden; }
 .meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ok); transition: width .25s, background .25s; }
-.meter.warn i { background: var(--warn); }
-.meter.over i { background: var(--blood); }
-.meterlab { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter[data-zone="amber"] i { background: var(--warn); }
+.meter[data-zone="red"] i { background: var(--blood); }
+.meter::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to right, transparent 0, transparent calc(100% / 6 - 2px), var(--surface) calc(100% / 6 - 2px), var(--surface) calc(100% / 6)); }
+.ticks { display: grid; grid-template-columns: repeat(6, 1fr); font-family: var(--f-num); font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: -4px; }
+.ticks span { text-align: right; padding-right: 1px; }
+.ticks span.hit { color: var(--ink); font-weight: 500; }
+.state.ok { color: var(--ok); }
+.meterlab { display: flex; justify-content: space-between; gap: 8px; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .state { font-weight: 700; }
 .state.warn { color: var(--warn); }
 .state.over { color: var(--blood); }
@@ -148,8 +154,9 @@ details[open] summary { margin-bottom: 8px; }
       <div class="fig small"><b id="tPct">–</b><small>% of EBV</small></div>
       <div class="fig small"><b id="tAbl">–</b><small>% of ABL</small></div>
     </div>
-    <div class="meter" id="meter"><i id="meterBar"></i></div>
-    <div class="meterlab"><span id="meterL">Allowable blood loss not set</span><span class="state" id="meterState"></span></div>
+    <div class="meter" id="meter" role="meter" aria-label="Blood loss as % of estimated blood volume" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0"><i id="meterBar"></i></div>
+    <div class="ticks" id="ticks" aria-hidden="true"><span>5%</span><span>10%</span><span>15%</span><span>20%</span><span>25%</span><span>30%</span></div>
+    <div class="meterlab"><span id="meterL">Enter weight and species to show % of blood volume lost</span><span class="state" id="meterState"></span></div>
   </div>
 </header>
 
@@ -296,7 +303,8 @@ details[open] summary { margin-bottom: 8px; }
   <section class="refs" aria-labelledby="h-ref">
     <h2 id="h-ref">Method and references</h2>
     <div class="formula">ABL = EBV × (PCV<sub>start</sub> − PCV<sub>min</sub>) ÷ ((PCV<sub>start</sub> + PCV<sub>min</sub>) ÷ 2)</div>
-    <p style="margin:0">The allowable blood loss formula was derived in human patients. Gravimetric measurement has been validated in dogs. This tool supports clinical judgement and does not replace it. Version 1.5, October 2026.</p>
+    <p style="margin:0">Progress bar colours are set by the service: green up to 5%, amber over 5–15%, red over 15% of estimated blood volume.</p>
+    <p style="margin:0">The allowable blood loss formula was derived in human patients. Gravimetric measurement has been validated in dogs. This tool supports clinical judgement and does not replace it. Version 1.7, October 2026.</p>
     <ol>
       <li>Gross JB. Estimating allowable blood loss: corrected for dilution. <i>Anesthesiology</i> 1983;58(3):277–80. <a href="https://pubmed.ncbi.nlm.nih.gov/6829965/" target="_blank" rel="noopener">PubMed</a></li>
       <li>Lee MH et al. Quantification of surgical blood loss. <i>Vet Surg</i> 2006;35:388–93. <a href="https://dspace.library.uu.nl/handle/1874/20222" target="_blank" rel="noopener">Open access</a></li>
@@ -326,6 +334,7 @@ details[open] summary { margin-bottom: 8px; }
     },
     swab: function (wet, dryEach, qty) { return Math.max(0, wet - dryEach * qty); },
     suction: function (can, lav) { return Math.max(0, (can || 0) - (lav || 0)); },
+    zone: function (pct) { return pct > 15 ? "red" : pct > 5 ? "amber" : "green"; },
     calibrate: function (total, n) { return (total > 0 && n >= 1) ? total / Math.round(n) : NaN; }
   };
   window.TBLcalc = calc;
@@ -534,16 +543,27 @@ details[open] summary { margin-bottom: 8px; }
     var ap = isFinite(abl) ? total / abl * 100 : NaN;
     $("tAbl").textContent = isFinite(ap) ? fmt(ap) : "–";
 
-    var m = $("meter"), st = $("meterState");
-    m.classList.remove("warn", "over"); st.className = "state";
-    if (isFinite(ap)) {
-      $("meterBar").style.width = Math.min(100, ap) + "%";
-      $("meterL").textContent = fmt(total) + " of " + fmt(abl) + " mL allowable";
-      if (ap >= 100) { m.classList.add("over"); st.classList.add("over"); st.textContent = "ABL exceeded"; }
-      else if (ap >= 75) { m.classList.add("warn"); st.classList.add("warn"); st.textContent = "Approaching ABL"; }
-      else st.textContent = "";
+    // Bar: % of estimated blood volume lost, scaled 0-30% in 5% steps
+    var m = $("meter"), st = $("meterState"), pct = isFinite(ebv) ? total / ebv * 100 : NaN;
+    st.className = "state"; st.textContent = "";
+    // Colour zones set by the service: green <=5%, amber >5-15%, red >15%
+    var ticks = $("ticks").children;
+    if (isFinite(pct)) {
+      var band = Math.min(6, Math.floor(pct / 5));
+      var zone = calc.zone(pct);
+      m.setAttribute("data-zone", zone);
+      m.setAttribute("aria-valuenow", pct.toFixed(1));
+      $("meterBar").style.width = Math.min(100, pct / 30 * 100) + "%";
+      for (var k = 0; k < ticks.length; k++) ticks[k].classList.toggle("hit", pct >= (k + 1) * 5);
+      $("meterL").textContent = fmt(total) + " of " + fmt(ebv) + " mL blood volume";
+      var zl = zone === "green" ? "Green" : zone === "amber" ? "Amber" : "Red";
+      st.classList.add(zone === "green" ? "ok" : zone === "amber" ? "warn" : "over");
+      st.textContent = zl + (pct > 30 ? ": over 30%" : band >= 1 ? ": " + band * 5 + "% passed" : "");
     } else {
-      $("meterBar").style.width = "0"; $("meterL").textContent = "Allowable blood loss not set"; st.textContent = "";
+      m.setAttribute("data-zone", "green"); m.setAttribute("aria-valuenow", 0);
+      $("meterBar").style.width = "0";
+      for (var k2 = 0; k2 < ticks.length; k2++) ticks[k2].classList.remove("hit");
+      $("meterL").textContent = "Enter weight and species to show % of blood volume lost";
     }
     renderSpecies();
     $("exampleNote").hidden = !c.example;
@@ -573,7 +593,7 @@ details[open] summary { margin-bottom: 8px; }
   });
 
   // ---------- PDF report ----------
-  var APP_VERSION = "1.5";
+  var APP_VERSION = "1.7";
   function d2(n) { return n < 10 ? "0" + n : "" + n; }
   function stamp(ms) { var d = new Date(ms); return d2(d.getDate()) + "/" + d2(d.getMonth() + 1) + "/" + d.getFullYear() + " " + d2(d.getHours()) + ":" + d2(d.getMinutes()); }
   function hhmm(ms) { var d = new Date(ms); return d2(d.getHours()) + ":" + d2(d.getMinutes()); }
@@ -629,7 +649,8 @@ details[open] summary { margin-bottom: 8px; }
     line("Other measured", dash(ot, " mL"));
     y += 1;
     line("TOTAL", dash(total, " mL"), true);
-    line("% of estimated blood volume", isFinite(ebv) ? (total / ebv * 100).toFixed(1) + " %" : "-", true);
+    var pctE = isFinite(ebv) ? total / ebv * 100 : NaN;
+    line("% of estimated blood volume", isFinite(pctE) ? pctE.toFixed(1) + " %  (" + calc.zone(pctE).toUpperCase() + ")" : "-", true);
     line("% of allowable blood loss", isFinite(abl) ? (total / abl * 100).toFixed(0) + " %" : "-", true);
 
     head("Swab log");
@@ -673,7 +694,7 @@ details[open] summary { margin-bottom: 8px; }
     doc.setFontSize(7.5); doc.setTextColor(110);
     var note = "Method: swab blood = wet weight - dry weight, taking 1 g as 1 mL (Lee et al., Vet Surg 2006). Suction blood = canister volume - lavage volume. " +
       "Allowable blood loss = EBV x (PCVstart - PCVmin) / mean PCV (Gross, Anesthesiology 1983; derived in human patients). " +
-      "Species blood volume defaults: " + (sp.ref || "not stated") + ". Estimates support clinical judgement and do not replace it.";
+      "Species blood volume defaults: " + (sp.ref || "not stated") + ". Colour zones (service-defined): green up to 5%, amber over 5-15%, red over 15% of estimated blood volume. Estimates support clinical judgement and do not replace it.";
     doc.text(doc.splitTextToSize(note, R - L), L, y);
 
     var safe = (info.id || "case").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "case";
