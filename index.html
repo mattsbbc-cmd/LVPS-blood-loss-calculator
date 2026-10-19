@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f5e6b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Blood Loss">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<script>window.TBL_PWA = true;</script>
+</head>
+<body>
+<title>Theatre Blood Loss</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Semi+Condensed:wght@500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one narrow column built for a phone held in theatre; a sticky running-total bar on top, inputs below in the order they happen during surgery. */
+:root {
+  --bg: #f3f5f5;
+  --surface: #ffffff;
+  --ink: #17252a;
+  --muted: #5b6b70;
+  --line: #d5dddf;
+  --accent: #0f5e6b;
+  --blood: #9b1c2e;
+  --warn: #b26a00;
+  --ok: #2e7d4f;
+  --chip: #e6eef0;
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1719; --surface: #172327; --ink: #e5eeef; --muted: #93a6ab; --line: #2a3a3f;
+    --accent: #5fb6c3; --blood: #e2596b; --warn: #e2a33f; --ok: #5cc28a; --chip: #213237;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1719; --surface: #172327; --ink: #e5eeef; --muted: #93a6ab; --line: #2a3a3f;
+  --accent: #5fb6c3; --blood: #e2596b; --warn: #e2a33f; --ok: #5cc28a; --chip: #213237;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 16px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 560px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Running total */
+.total { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.total .wrap { padding-block: 12px 14px; display: grid; gap: 8px; }
+.brand { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; letter-spacing: .06em; text-transform: uppercase; margin: 0; color: var(--accent); }
+.brand span { font-size: .78rem; color: var(--muted); }
+.figs { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 10px; align-items: end; }
+.fig { min-width: 0; }
+.fig b { display: block; font-family: var(--f-num); font-weight: 500; font-size: 1.9rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--blood); }
+.fig.small b { font-size: 1.25rem; color: var(--ink); }
+.fig small { display: block; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+.meter { position: relative; height: 10px; border-radius: 5px; background: var(--chip); overflow: hidden; }
+.meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ok); transition: width .25s, background .25s; }
+.meter.warn i { background: var(--warn); }
+.meter.over i { background: var(--blood); }
+.meterlab { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.state { font-weight: 700; }
+.state.warn { color: var(--warn); }
+.state.over { color: var(--blood); }
+
+/* Sections */
+main .wrap { padding-block: 16px 40px; display: grid; gap: 18px; }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 12px; min-width: 0; }
+section h2 { font-family: var(--f-display); font-weight: 700; font-size: 1.15rem; margin: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+section h2 em { font-style: normal; font-family: var(--f-num); font-weight: 500; font-size: .95rem; color: var(--blood); font-variant-numeric: tabular-nums; }
+.hint { font-size: .82rem; color: var(--muted); margin: 0; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+label { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); min-width: 0; }
+input, select { font: inherit; font-family: var(--f-num); font-size: 1.05rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 10px; width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
+select { font-family: var(--f-body); font-size: .95rem; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.unit { position: relative; }
+.unit input { padding-right: 46px; }
+.unit::after { content: attr(data-u); position: absolute; right: 10px; bottom: 11px; font-size: .8rem; color: var(--muted); pointer-events: none; }
+button { font: inherit; font-weight: 700; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--surface); padding: 10px 14px; cursor: pointer; min-height: 44px; }
+button.ghost { background: transparent; color: var(--accent); }
+button.quiet { background: transparent; border-color: var(--line); color: var(--muted); font-weight: 400; }
+.row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.row > label { flex: 1 1 120px; }
+.result { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--chip); font-size: .9rem; }
+.result b { font-family: var(--f-num); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* Swab log */
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 260px; overflow: auto; }
+.log li { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: .88rem; }
+.log .n { font-family: var(--f-num); color: var(--muted); font-size: .8rem; }
+.log .v { font-family: var(--f-num); font-variant-numeric: tabular-nums; color: var(--blood); }
+.log button { min-height: 32px; padding: 2px 10px; font-size: .8rem; }
+.empty { font-size: .85rem; color: var(--muted); padding: 8px 0; }
+.quick { display: flex; gap: 8px; flex-wrap: wrap; }
+.quick button { flex: 1 1 auto; }
+
+.species { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--accent); border-radius: 8px; overflow: hidden; }
+.species legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.species input { position: absolute; opacity: 0; pointer-events: none; }
+.species label { display: block; text-align: center; padding: 11px 8px; font-size: 1rem; font-weight: 700; color: var(--accent); cursor: pointer; min-height: 44px; }
+.species label + input + label { border-left: 1px solid var(--accent); }
+.species input:checked + label { background: var(--accent); color: var(--surface); }
+.species input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: -3px; }
+.over-tag { color: var(--warn); font-weight: 700; }
+.authh { font-family: var(--f-display); font-weight: 700; font-size: 1rem; margin: 6px 0 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.steps { list-style: none; counter-reset: step; margin: 4px 0 0; padding: 0; display: grid; gap: 14px; }
+.steps > li { counter-increment: step; position: relative; padding-left: 44px; display: grid; gap: 8px; min-width: 0; }
+.steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--surface); font-family: var(--f-num); font-weight: 500; display: grid; place-items: center; font-size: .95rem; }
+.steps > li:not(:last-child)::after { content: ""; position: absolute; left: 14px; top: 34px; bottom: -12px; width: 2px; background: var(--line); }
+.steps h3 { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; margin: 4px 0 0; }
+.steps p { margin: 0; font-size: .9rem; }
+.calwarn { margin: 0; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--warn); color: var(--warn); font-size: .88rem; font-weight: 700; }
+.calmsg:empty { display: none; }
+.calmsg { margin: 0; color: var(--ok); font-weight: 700; }
+details summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+details[open] summary { margin-bottom: 8px; }
+.types { display: grid; gap: 8px; }
+.types .t { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: end; }
+
+.confirm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: .9rem; }
+.refs { font-size: .8rem; color: var(--muted); }
+.refs ol { padding-left: 18px; margin: 6px 0 0; display: grid; gap: 4px; }
+.refs a { color: var(--accent); overflow-wrap: anywhere; }
+.formula { font-family: var(--f-num); font-size: .8rem; background: var(--chip); padding: 8px 10px; border-radius: 8px; overflow-x: auto; white-space: nowrap; }
+.example { font-size: .8rem; color: var(--warn); font-weight: 700; }
+@media (max-width: 380px) { .figs { grid-template-columns: 1fr 1fr; } .figs .fig:first-child { grid-column: 1 / -1; } .grid2 { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+
+<header class="total" aria-live="polite">
+  <div class="wrap">
+    <div class="brand"><h1>Theatre Blood Loss</h1><span id="clock">Case not started</span></div>
+    <div class="figs">
+      <div class="fig"><b id="tTotal">0</b><small>mL total loss</small></div>
+      <div class="fig small"><b id="tPct">–</b><small>% of EBV</small></div>
+      <div class="fig small"><b id="tAbl">–</b><small>% of ABL</small></div>
+    </div>
+    <div class="meter" id="meter"><i id="meterBar"></i></div>
+    <div class="meterlab"><span id="meterL">Allowable blood loss not set</span><span class="state" id="meterState"></span></div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <p class="example" id="exampleNote" hidden>Example case loaded. Clear it before use.</p>
+
+  <section aria-labelledby="h-cal" class="cal">
+    <h2 id="h-cal">Calibrate swabs</h2>
+    <p class="hint">Do this before first use, and every time a new box or brand of swab arrives. It takes about two minutes.</p>
+    <ul class="log" id="calList" aria-label="Current dry weights"></ul>
+    <details id="calSteps">
+      <summary>Start calibration</summary>
+      <ol class="steps">
+        <li>
+          <h3>Choose the swab type</h3>
+          <label for="calType" class="sr">Swab type</label>
+          <select id="calType"></select>
+          <button type="button" class="ghost" id="calNewBtn">New brand or size? Add it</button>
+          <div class="row" id="calNewRow" hidden>
+            <label for="calNewName">Name, e.g. brand and size<input id="calNewName" type="text" style="font-family:var(--f-body);font-size:.95rem"></label>
+            <button type="button" id="calNewAdd">Add</button>
+          </div>
+        </li>
+        <li>
+          <h3>Zero the scale</h3>
+          <p>Switch the scale on with nothing on it. Make sure it reads <b>0.0 g</b>. If it doesn't, press tare or zero.</p>
+        </li>
+        <li>
+          <h3>Count out 10 clean swabs</h3>
+          <p>Take them from an unopened or freshly opened pack. They must be completely dry and unused. Don't include the packaging or any X-ray strip that isn't part of the swab.</p>
+          <label for="calN">Number of swabs<input id="calN" type="number" inputmode="numeric" min="1" step="1" value="10"></label>
+        </li>
+        <li>
+          <h3>Weigh them together</h3>
+          <p>Put all the swabs on the scale at once. Wait for the reading to settle, then type it in.</p>
+          <label for="calWt">Scale reading<span class="unit" data-u="g"><input id="calWt" type="number" inputmode="decimal" min="0" step="0.1"></span></label>
+        </li>
+        <li>
+          <h3>Check and save</h3>
+          <div class="result"><span>Dry weight per swab</span><b id="calOut">–</b></div>
+          <p class="calwarn" id="calWarn" hidden></p>
+          <button type="button" id="calSave">Save dry weight</button>
+        </li>
+      </ol>
+    </details>
+    <p class="hint calmsg" id="calMsg" aria-live="polite"></p>
+  </section>
+
+  <section aria-labelledby="h-pt">
+    <h2 id="h-pt">Patient</h2>
+    <fieldset class="species">
+      <legend>Species</legend>
+      <input type="radio" name="sp" id="spDog" value="dog"><label for="spDog">Dog</label>
+      <input type="radio" name="sp" id="spCat" value="cat"><label for="spCat">Cat</label>
+    </fieldset>
+    <p class="hint" id="spHint">Choose a species to fill in blood volume.</p>
+    <div class="grid2">
+      <label for="wt">Body weight<span class="unit" data-u="kg"><input id="wt" type="number" inputmode="decimal" min="0" step="0.1"></span></label>
+      <label for="ebvk">Blood volume<span class="unit" data-u="mL/kg"><input id="ebvk" type="number" inputmode="decimal" min="0" step="1"></span></label>
+      <label for="h0">Starting PCV<span class="unit" data-u="%"><input id="h0" type="number" inputmode="decimal" min="0" max="80" step="1"></span></label>
+      <label for="hf">Lowest acceptable PCV<span class="unit" data-u="%"><input id="hf" type="number" inputmode="decimal" min="0" max="80" step="1"></span></label>
+    </div>
+    <p class="hint">You can type over blood volume for an individual patient. Lowest acceptable PCV is the clinician's decision for this patient.</p>
+    <details>
+      <summary>Species blood volume defaults</summary>
+      <div class="grid2">
+        <label for="defDog">Dog<span class="unit" data-u="mL/kg"><input id="defDog" type="number" inputmode="decimal" min="0" step="1"></span></label>
+        <label for="defCat">Cat<span class="unit" data-u="mL/kg"><input id="defCat" type="number" inputmode="decimal" min="0" step="1"></span></label>
+      </div>
+      <label for="defRef" style="margin-top:10px">Reference for these values<input id="defRef" type="text" style="font-family:var(--f-body);font-size:.9rem"></label>
+      <button type="button" class="quiet" id="defReset" style="margin-top:10px">Restore 90 / 66 mL/kg</button>
+      <p class="hint">Saved on this phone. Changing these doesn't alter a case already in progress.</p>
+    </details>
+    <div class="result"><span>Estimated blood volume</span><b id="rEbv">–</b></div>
+    <div class="result"><span>Allowable blood loss (Gross)</span><b id="rAbl">–</b></div>
+  </section>
+
+  <section aria-labelledby="h-sw">
+    <h2 id="h-sw">Swabs <em id="swTotal">0 mL</em></h2>
+    <p class="hint">Weigh each used swab. Blood (mL) = wet weight − dry weight, taking 1 g ≈ 1 mL.</p>
+    <div class="row">
+      <label for="swType">Item<select id="swType"></select></label>
+      <label for="swWet">Wet weight<span class="unit" data-u="g"><input id="swWet" type="number" inputmode="decimal" min="0" step="0.1"></span></label>
+      <label for="swQty" style="flex:0 1 80px">Qty<input id="swQty" type="number" inputmode="numeric" min="1" step="1" value="1"></label>
+    </div>
+    <p class="hint" style="margin-top:-4px">Weighing several together? Enter their combined wet weight and the count.</p>
+    <button id="swAdd" type="button">Add to tally</button>
+    <ul class="log" id="swLog"></ul>
+    <details>
+      <summary>Edit swab types</summary>
+      <div class="types" id="types"></div>
+      <div class="row" style="margin-top:8px">
+        <button type="button" class="ghost" id="typeAdd">Add swab type</button>
+      </div>
+      <p class="hint">Rename, add or remove types here. Use Calibrate swabs to set dry weights. Saved on this phone.</p>
+    </details>
+  </section>
+
+  <section aria-labelledby="h-su">
+    <h2 id="h-su">Suction <em id="suTotal">0 mL</em></h2>
+    <div class="grid2">
+      <label for="suCan">Canister volume<span class="unit" data-u="mL"><input id="suCan" type="number" inputmode="decimal" min="0" step="1"></span></label>
+      <label for="suLav">Lavage used<span class="unit" data-u="mL"><input id="suLav" type="number" inputmode="decimal" min="0" step="1"></span></label>
+    </div>
+    <p class="hint">Blood = canister − lavage. Lavage soaked into swabs is counted in their weight, so adjust if needed.</p>
+  </section>
+
+  <section aria-labelledby="h-ot">
+    <h2 id="h-ot">Other measured loss <em id="otTotal">0 mL</em></h2>
+    <label for="other">Drapes, collection bags, sample volumes<span class="unit" data-u="mL"><input id="other" type="number" inputmode="decimal" min="0" step="1"></span></label>
+  </section>
+
+  <section aria-labelledby="h-rep">
+    <h2 id="h-rep">Report for patient file</h2>
+    <label for="repId">Patient name and hospital number<input id="repId" type="text" autocomplete="off" style="font-family:var(--f-body);font-size:.95rem"></label>
+    <label for="repProc">Procedure<input id="repProc" type="text" autocomplete="off" style="font-family:var(--f-body);font-size:.95rem"></label>
+    <h3 class="authh">Authorisation</h3>
+    <p class="hint" style="margin-top:-6px">Both names are needed before the report can be exported. Entering a name confirms that person has checked the figures.</p>
+    <div class="grid2">
+      <label for="repAna">Anaesthetist<input id="repAna" type="text" autocomplete="off" style="font-family:var(--f-body);font-size:.95rem"></label>
+      <label for="repTech">Theatre technician<input id="repTech" type="text" autocomplete="off" style="font-family:var(--f-body);font-size:.95rem"></label>
+    </div>
+    <button type="button" id="repShare">Email PDF</button>
+    <button type="button" class="ghost" id="repSave">Save PDF to phone</button>
+    <p class="hint">Email PDF opens your phone's share menu. Choose Mail or Outlook, add the recipient, and send. The details above go only into the PDF and aren't stored on the phone.</p>
+    <p class="calwarn" id="repMsg" hidden></p>
+  </section>
+
+  <section aria-labelledby="h-case">
+    <h2 id="h-case">Case</h2>
+    <div class="confirm" id="resetWrap">
+      <button type="button" class="ghost" id="resetBtn">Start new case</button>
+      <span class="hint">Keeps your swab types. Nothing identifying is stored.</span>
+    </div>
+    <div class="confirm" id="resetConfirm" hidden>
+      <span>Clear all entries for this case?</span>
+      <button type="button" id="resetYes">Clear case</button>
+      <button type="button" class="quiet" id="resetNo">Cancel</button>
+    </div>
+  </section>
+
+  <section class="refs" aria-labelledby="h-ref">
+    <h2 id="h-ref">Method and references</h2>
+    <div class="formula">ABL = EBV × (PCV<sub>start</sub> − PCV<sub>min</sub>) ÷ ((PCV<sub>start</sub> + PCV<sub>min</sub>) ÷ 2)</div>
+    <p style="margin:0">The allowable blood loss formula was derived in human patients. Gravimetric measurement has been validated in dogs. This tool supports clinical judgement and does not replace it. Version 1.5, October 2026.</p>
+    <ol>
+      <li>Gross JB. Estimating allowable blood loss: corrected for dilution. <i>Anesthesiology</i> 1983;58(3):277–80. <a href="https://pubmed.ncbi.nlm.nih.gov/6829965/" target="_blank" rel="noopener">PubMed</a></li>
+      <li>Lee MH et al. Quantification of surgical blood loss. <i>Vet Surg</i> 2006;35:388–93. <a href="https://dspace.library.uu.nl/handle/1874/20222" target="_blank" rel="noopener">Open access</a></li>
+      <li>Blood density is nearly equal to water density: gravimetric validation. <i>J Vet Med</i>. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4590883" target="_blank" rel="noopener">PMC4590883</a></li>
+      <li>Jutkowitz LA et al. Massive transfusion in dogs: 15 cases (1997–2001). <i>JAVMA</i> 2002;220(11):1664–9. Source of the 90 mL/kg (dog) and 66 mL/kg (cat) defaults. <a href="https://doi.org/10.2460/javma.2002.220.1664" target="_blank" rel="noopener">DOI</a></li>
+      <li>Cumming SH, Martinez-Taboada F. Blood loss estimation in small animals. <i>Front Vet Sci</i> 2020;7:212. <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7221018/" target="_blank" rel="noopener">PMC7221018</a></li>
+    </ol>
+  </section>
+
+</div>
+</main>
+
+<script src="jspdf.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var KEY = "tbl-case-v1", TYPES = "tbl-types-v1";
+  var $ = function (id) { return document.getElementById(id); };
+  var num = function (v) { var n = parseFloat(v); return isFinite(n) ? n : NaN; };
+
+  // Pure calculations (exposed for testing)
+  var calc = {
+    ebv: function (wt, perKg) { return (wt > 0 && perKg > 0) ? wt * perKg : NaN; },
+    abl: function (ebv, h0, hf) {
+      if (!(ebv > 0) || !(h0 > 0) || !(hf > 0) || hf >= h0) return NaN;
+      return ebv * (h0 - hf) / ((h0 + hf) / 2);
+    },
+    swab: function (wet, dryEach, qty) { return Math.max(0, wet - dryEach * qty); },
+    suction: function (can, lav) { return Math.max(0, (can || 0) - (lav || 0)); },
+    calibrate: function (total, n) { return (total > 0 && n >= 1) ? total / Math.round(n) : NaN; }
+  };
+  window.TBLcalc = calc;
+
+  function load(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  var exampleTypes = [
+    { name: "Gauze swab (example: weigh yours)", dry: 4 },
+    { name: "Laparotomy sponge (example: weigh yours)", dry: 20 }
+  ];
+  var SPECIES = "tbl-species-v1";
+  var stdSpecies = { dog: 90, cat: 66, ref: "Jutkowitz LA et al. JAVMA 2002;220:1664–9, citing Kohn & DiBartola 1992" };
+  var sp = load(SPECIES, null) || JSON.parse(JSON.stringify(stdSpecies));
+
+  var exampleCase = {
+    example: true, started: null, species: "dog",
+    wt: 28, ebvk: 90, h0: 45, hf: 25,
+    swabs: [ { type: 0, wet: 19.5, qty: 1 }, { type: 0, wet: 41, qty: 3 }, { type: 1, wet: 64, qty: 1 } ],
+    suCan: 350, suLav: 250, other: 0
+  };
+  var blankCase = function () { return { example: false, started: null, species: "", wt: "", ebvk: "", h0: "", hf: "", swabs: [], suCan: "", suLav: "", other: "" }; };
+
+  var types = load(TYPES, null) || exampleTypes.slice();
+  var c = load(KEY, null) || JSON.parse(JSON.stringify(exampleCase));
+
+  var fields = ["wt", "ebvk", "h0", "hf", "suCan", "suLav", "other"];
+  fields.forEach(function (f) {
+    $(f).value = c[f];
+    $(f).addEventListener("input", function () { c[f] = $(f).value; touch(); });
+  });
+
+  function touch() { if (!c.started) c.started = Date.now(); save(KEY, c); render(); }
+
+  // Species selector and editable defaults
+  ["dog", "cat"].forEach(function (s) {
+    var r = $(s === "dog" ? "spDog" : "spCat");
+    r.addEventListener("change", function () {
+      if (!r.checked) return;
+      c.species = s;
+      c.ebvk = sp[s]; $("ebvk").value = sp[s];
+      touch();
+    });
+  });
+  function renderSpeciesDefaults() { $("defDog").value = sp.dog; $("defCat").value = sp.cat; $("defRef").value = sp.ref; }
+  $("defDog").addEventListener("change", function () { sp.dog = num($("defDog").value) || ""; save(SPECIES, sp); render(); });
+  $("defCat").addEventListener("change", function () { sp.cat = num($("defCat").value) || ""; save(SPECIES, sp); render(); });
+  $("defRef").addEventListener("change", function () { sp.ref = $("defRef").value; save(SPECIES, sp); render(); });
+  $("defReset").addEventListener("click", function () { sp = JSON.parse(JSON.stringify(stdSpecies)); save(SPECIES, sp); renderSpeciesDefaults(); render(); });
+
+  function renderSpecies() {
+    $("spDog").checked = c.species === "dog";
+    $("spCat").checked = c.species === "cat";
+    var h = $("spHint");
+    if (!c.species) { h.textContent = "Choose a species to fill in blood volume."; return; }
+    var def = num(sp[c.species]), cur = num(c.ebvk), name = c.species === "dog" ? "Dog" : "Cat";
+    h.textContent = "";
+    var base = document.createTextNode(name + " default: " + (isFinite(def) ? def + " mL/kg" : "not set") + (sp.ref ? " (" + sp.ref + ")." : "."));
+    h.appendChild(base);
+    if (isFinite(cur) && isFinite(def) && cur !== def) {
+      var t = document.createElement("span"); t.className = "over-tag";
+      t.textContent = " Using " + cur + " mL/kg for this patient.";
+      h.appendChild(t);
+    }
+  }
+
+  function fmt(n, d) { return isFinite(n) ? n.toFixed(d || 0) : "–"; }
+
+  function renderTypes() {
+    var sel = $("swType"), keep = sel.value;
+    sel.innerHTML = "";
+    types.forEach(function (t, i) {
+      var o = document.createElement("option");
+      o.value = i; o.textContent = t.name + " · " + (t.dry || 0) + " g dry";
+      sel.appendChild(o);
+    });
+    if (keep && types[keep]) sel.value = keep;
+    var box = $("types"); box.innerHTML = "";
+    types.forEach(function (t, i) {
+      var d = document.createElement("div"); d.className = "t";
+      d.innerHTML = '<label for="tn' + i + '">Name<input id="tn' + i + '" type="text"></label>' +
+        '<span class="hint" style="padding-bottom:12px"></span>' +
+        '<button type="button" class="quiet" aria-label="Remove ' + t.name.replace(/"/g, "") + '">Remove</button>';
+      box.appendChild(d);
+      var n = d.querySelector("#tn" + i);
+      n.value = t.name;
+      d.children[1].textContent = (t.dry || 0) + " g dry";
+      n.addEventListener("change", function () { types[i].name = n.value || "Unnamed"; save(TYPES, types); renderTypes(); renderLog(); });
+      d.querySelector("button").addEventListener("click", function () {
+        if (c.swabs.some(function (s) { return s.type === i; })) { d.querySelector("button").textContent = "In use"; return; }
+        types.splice(i, 1);
+        c.swabs.forEach(function (s) { if (s.type > i) s.type--; });
+        save(TYPES, types); save(KEY, c); renderTypes(); render();
+      });
+    });
+
+    // Calibration select and status list
+    var cs = $("calType"), ck = cs.value;
+    cs.innerHTML = "";
+    types.forEach(function (t, i) {
+      var o = document.createElement("option"); o.value = i; o.textContent = t.name; cs.appendChild(o);
+    });
+    if (ck && types[ck]) cs.value = ck;
+    var cl = $("calList"); cl.innerHTML = "";
+    types.forEach(function (t) {
+      var li = document.createElement("li");
+      li.style.gridTemplateColumns = "1fr auto";
+      li.innerHTML = '<span></span><span class="v"></span>';
+      li.children[0].textContent = t.name + (t.cal ? " · calibrated " + new Date(t.cal.at).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" }) + " (" + t.cal.n + " swabs, " + t.cal.total + " g)" : " · not calibrated");
+      li.children[1].textContent = (t.dry || 0) + " g each";
+      if (!t.cal) li.children[0].style.color = "var(--warn)";
+      cl.appendChild(li);
+    });
+    calPreview();
+  }
+
+  var calConfirmed = false;
+  function calCheck(per, t) {
+    // Returns a warning string, or "" if the reading looks plausible
+    if (!isFinite(per)) return "";
+    if (per < 0.5 || per > 150) return "This reading looks unusual. Check the scale is in grams and was zeroed, then re-weigh.";
+    if (t && t.cal && t.dry > 0) {
+      var diff = Math.abs(per - t.dry) / t.dry * 100;
+      if (diff > 10) return "This is " + diff.toFixed(0) + "% different from the last calibration (" + t.dry + " g). Re-weigh to confirm, or tap Save again if this is a new brand.";
+    }
+    return "";
+  }
+  function calPreview() {
+    var per = calc.calibrate(num($("calWt").value), num($("calN").value));
+    var t = types[parseInt($("calType").value, 10)];
+    $("calOut").textContent = isFinite(per) ? per.toFixed(2) + " g" : "Enter the reading in step 4";
+    var w = calCheck(per, t);
+    $("calWarn").textContent = w; $("calWarn").hidden = !w;
+    calConfirmed = false; $("calSave").textContent = "Save dry weight";
+    return per;
+  }
+  $("calWt").addEventListener("input", calPreview);
+  $("calN").addEventListener("input", calPreview);
+  $("calType").addEventListener("change", function () { $("calMsg").textContent = ""; calPreview(); });
+  $("calSteps").addEventListener("toggle", function () { if ($("calSteps").open) $("calMsg").textContent = ""; });
+
+  $("calNewBtn").addEventListener("click", function () { $("calNewRow").hidden = false; $("calNewBtn").hidden = true; $("calNewName").focus(); });
+  $("calNewAdd").addEventListener("click", function () {
+    var n = $("calNewName").value.trim();
+    if (!n) { $("calNewName").focus(); return; }
+    types.push({ name: n, dry: 0 }); save(TYPES, types);
+    $("calNewName").value = ""; $("calNewRow").hidden = true; $("calNewBtn").hidden = false;
+    renderTypes(); $("calType").value = String(types.length - 1); calPreview(); renderTypes();
+  });
+
+  $("calSave").addEventListener("click", function () {
+    var i = parseInt($("calType").value, 10), t = types[i];
+    var per = calc.calibrate(num($("calWt").value), num($("calN").value));
+    if (!isFinite(per) || !t) {
+      $("calWarn").textContent = "Enter the scale reading (step 4) and the number of swabs (step 3).";
+      $("calWarn").hidden = false; $("calWt").focus(); return;
+    }
+    if (calCheck(per, t) && !calConfirmed) {
+      calConfirmed = true; $("calSave").textContent = "Save anyway"; return;
+    }
+    var old = t.dry;
+    t.dry = Math.round(per * 100) / 100;
+    t.cal = { at: Date.now(), n: Math.round(num($("calN").value)), total: num($("calWt").value) };
+    t.name = t.name.replace(/ \(example.*\)$/, "");
+    save(TYPES, types);
+    $("calMsg").textContent = "Saved. " + t.name + " is now " + t.dry + " g per swab" + (old ? " (was " + old + " g)." : ".");
+    $("calWt").value = ""; $("calN").value = 10;
+    $("calSteps").open = false;
+    renderTypes(); render(); calPreview();
+  });
+
+  function swabBlood(s) {
+    var dry = (typeof s.dry === "number") ? s.dry : (types[s.type] || { dry: 0 }).dry;
+    return calc.swab(s.wet, dry, s.qty || 1);
+  }
+
+  function renderLog() {
+    var ul = $("swLog"); ul.innerHTML = "";
+    if (!c.swabs.length) { ul.innerHTML = '<li class="empty" style="border:0">No swabs weighed yet.</li>'; return; }
+    c.swabs.forEach(function (s, i) {
+      var li = document.createElement("li"), t = types[s.type] || { name: "Removed type" };
+      li.innerHTML = '<span class="n">' + (i + 1) + '</span><span></span><span class="v"></span><button type="button" class="quiet">Undo</button>';
+      li.children[1].textContent = (s.qty > 1 ? s.qty + " × " : "") + t.name.replace(/ \(example.*\)$/, "") + ", " + s.wet + " g";
+      li.children[2].textContent = fmt(swabBlood(s)) + " mL";
+      li.querySelector("button").addEventListener("click", function () { c.swabs.splice(i, 1); touch(); });
+      ul.appendChild(li);
+    });
+    ul.scrollTop = ul.scrollHeight;
+  }
+
+  function render() {
+    var ebv = calc.ebv(num(c.wt), num(c.ebvk));
+    var abl = calc.abl(ebv, num(c.h0), num(c.hf));
+    var sw = c.swabs.reduce(function (a, s) { return a + swabBlood(s); }, 0);
+    var su = calc.suction(num(c.suCan) || 0, num(c.suLav) || 0);
+    var ot = Math.max(0, num(c.other) || 0);
+    var total = sw + su + ot;
+
+    $("rEbv").textContent = isFinite(ebv) ? fmt(ebv) + " mL" : "Enter weight and mL/kg";
+    $("rAbl").textContent = isFinite(abl) ? fmt(abl) + " mL" : (num(c.hf) >= num(c.h0) ? "Lowest PCV must be below start" : "Enter both PCVs");
+    $("swTotal").textContent = fmt(sw) + " mL";
+    $("suTotal").textContent = fmt(su) + " mL";
+    $("otTotal").textContent = fmt(ot) + " mL";
+    $("tTotal").textContent = fmt(total);
+    $("tPct").textContent = isFinite(ebv) ? fmt(total / ebv * 100, 1) : "–";
+    var ap = isFinite(abl) ? total / abl * 100 : NaN;
+    $("tAbl").textContent = isFinite(ap) ? fmt(ap) : "–";
+
+    var m = $("meter"), st = $("meterState");
+    m.classList.remove("warn", "over"); st.className = "state";
+    if (isFinite(ap)) {
+      $("meterBar").style.width = Math.min(100, ap) + "%";
+      $("meterL").textContent = fmt(total) + " of " + fmt(abl) + " mL allowable";
+      if (ap >= 100) { m.classList.add("over"); st.classList.add("over"); st.textContent = "ABL exceeded"; }
+      else if (ap >= 75) { m.classList.add("warn"); st.classList.add("warn"); st.textContent = "Approaching ABL"; }
+      else st.textContent = "";
+    } else {
+      $("meterBar").style.width = "0"; $("meterL").textContent = "Allowable blood loss not set"; st.textContent = "";
+    }
+    renderSpecies();
+    $("exampleNote").hidden = !c.example;
+    $("clock").textContent = c.started ? "Started " + new Date(c.started).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : (c.example ? "Example case" : "Case not started");
+    renderLog();
+  }
+
+  $("swAdd").addEventListener("click", function () {
+    var wet = num($("swWet").value), qty = Math.max(1, Math.round(num($("swQty").value) || 1));
+    if (!(wet > 0) || !types.length) { $("swWet").focus(); return; }
+    var ti = parseInt($("swType").value, 10) || 0;
+    c.swabs.push({ type: ti, wet: wet, qty: qty, dry: (types[ti] || { dry: 0 }).dry || 0, t: Date.now() });
+    $("swWet").value = ""; $("swQty").value = 1; $("swWet").focus();
+    touch();
+  });
+  $("swWet").addEventListener("keydown", function (e) { if (e.key === "Enter") $("swAdd").click(); });
+  $("typeAdd").addEventListener("click", function () { types.push({ name: "New swab type", dry: 0 }); save(TYPES, types); renderTypes(); });
+
+  $("resetBtn").addEventListener("click", function () { $("resetWrap").hidden = true; $("resetConfirm").hidden = false; });
+  $("resetNo").addEventListener("click", function () { $("resetWrap").hidden = false; $("resetConfirm").hidden = true; });
+  $("resetYes").addEventListener("click", function () {
+    c = blankCase(); save(KEY, c);
+    ["repId", "repProc", "repAna", "repTech"].forEach(function (f) { $(f).value = ""; }); repMsg("");
+    fields.forEach(function (f) { $(f).value = ""; });
+    $("resetWrap").hidden = false; $("resetConfirm").hidden = true;
+    render();
+  });
+
+  // ---------- PDF report ----------
+  var APP_VERSION = "1.5";
+  function d2(n) { return n < 10 ? "0" + n : "" + n; }
+  function stamp(ms) { var d = new Date(ms); return d2(d.getDate()) + "/" + d2(d.getMonth() + 1) + "/" + d.getFullYear() + " " + d2(d.getHours()) + ":" + d2(d.getMinutes()); }
+  function hhmm(ms) { var d = new Date(ms); return d2(d.getHours()) + ":" + d2(d.getMinutes()); }
+
+  function buildReport(info) {
+    var J = window.jspdf && window.jspdf.jsPDF;
+    if (!J) throw new Error("PDF library not loaded");
+    var doc = new J({ unit: "mm", format: "a4" });
+    var L = 15, R = 195, y = 18, now = Date.now();
+    function line(k, v, bold) {
+      if (y > 275) { doc.addPage(); y = 18; }
+      doc.setFont("helvetica", "normal"); doc.setTextColor(90); doc.text(k, L, y);
+      doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setTextColor(20);
+      doc.text(String(v), L + 62, y); y += 6;
+      doc.setFont("helvetica", "normal"); doc.setTextColor(20);
+    }
+    function head(t) {
+      if (y > 265) { doc.addPage(); y = 18; }
+      y += 3; doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(15, 94, 107);
+      doc.text(t, L, y); y += 2; doc.setDrawColor(200); doc.line(L, y, R, y); y += 5; doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(20);
+    }
+
+    var ebv = calc.ebv(num(c.wt), num(c.ebvk));
+    var abl = calc.abl(ebv, num(c.h0), num(c.hf));
+    var sw = c.swabs.reduce(function (a, s) { return a + swabBlood(s); }, 0);
+    var su = calc.suction(num(c.suCan) || 0, num(c.suLav) || 0);
+    var ot = Math.max(0, num(c.other) || 0);
+    var total = sw + su + ot;
+    var spName = c.species === "dog" ? "Dog" : c.species === "cat" ? "Cat" : "Not recorded";
+    var dash = function (n, u, d) { return isFinite(n) ? n.toFixed(d || 0) + (u || "") : "-"; };
+
+    doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(20);
+    doc.text("Intraoperative blood loss record", L, y); y += 7;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(90);
+    doc.text("Generated " + stamp(now) + " by Theatre Blood Loss v" + APP_VERSION, L, y); y += 4;
+    doc.setFontSize(10);
+
+    head("Patient");
+    line("Patient / hospital no.", info.id || "-", true);
+    line("Procedure", info.proc || "-");
+    line("Case started", c.started ? stamp(c.started) : "-");
+    line("Species", spName);
+    line("Body weight", dash(num(c.wt), " kg", 1));
+    line("Blood volume used", dash(num(c.ebvk), " mL/kg") + (c.species && num(c.ebvk) !== num(sp[c.species]) ? "  (patient-specific)" : ""));
+    line("Starting PCV", dash(num(c.h0), " %"));
+    line("Lowest acceptable PCV", dash(num(c.hf), " %"));
+    line("Estimated blood volume", dash(ebv, " mL"));
+    line("Allowable blood loss", dash(abl, " mL"));
+
+    head("Measured blood loss");
+    line("Swabs (gravimetric)", dash(sw, " mL"));
+    line("Suction", dash(su, " mL") + "  (canister " + (c.suCan || 0) + " mL - lavage " + (c.suLav || 0) + " mL)");
+    line("Other measured", dash(ot, " mL"));
+    y += 1;
+    line("TOTAL", dash(total, " mL"), true);
+    line("% of estimated blood volume", isFinite(ebv) ? (total / ebv * 100).toFixed(1) + " %" : "-", true);
+    line("% of allowable blood loss", isFinite(abl) ? (total / abl * 100).toFixed(0) + " %" : "-", true);
+
+    head("Swab log");
+    if (!c.swabs.length) { doc.text("No swabs weighed.", L, y); y += 6; }
+    else {
+      var cols = [L, L + 10, L + 26, L + 100, L + 114, L + 136, L + 160];
+      var hdr = ["#", "Time", "Item", "Qty", "Wet (g)", "Dry each (g)", "Blood (mL)"];
+      doc.setFont("helvetica", "bold"); doc.setTextColor(90);
+      hdr.forEach(function (h, i) { doc.text(h, cols[i], y); }); y += 5;
+      doc.setFont("helvetica", "normal"); doc.setTextColor(20);
+      c.swabs.forEach(function (s, i) {
+        if (y > 280) { doc.addPage(); y = 18; }
+        var t = types[s.type] || { name: "Removed type" };
+        var dry = (typeof s.dry === "number") ? s.dry : t.dry;
+        var name = doc.splitTextToSize(t.name.replace(/ \(example.*\)$/, ""), 70)[0];
+        [String(i + 1), s.t ? hhmm(s.t) : "-", name, String(s.qty || 1), String(s.wet), String(dry), swabBlood(s).toFixed(0)]
+          .forEach(function (v, k) { doc.text(v, cols[k], y); });
+        y += 5;
+      });
+    }
+
+    head("Swab calibration");
+    var used = {};
+    c.swabs.forEach(function (s) { used[s.type] = true; });
+    var any = false;
+    types.forEach(function (t, i) {
+      if (!used[i]) return; any = true;
+      line(doc.splitTextToSize(t.name.replace(/ \(example.*\)$/, ""), 58)[0], t.dry + " g each" + (t.cal ? "  (calibrated " + stamp(t.cal.at).slice(0, 10) + ", " + t.cal.n + " swabs)" : "  (NOT calibrated)"));
+    });
+    if (!any) { doc.text("No swabs used.", L, y); y += 6; }
+
+    head("Authorisation");
+    doc.setFontSize(9); doc.setTextColor(90);
+    doc.text("Authorised " + stamp(now), L, y); y += 6;
+    doc.setFontSize(10);
+    line("Anaesthetist", info.ana || "-", true);
+    line("Theatre technician", info.tech || "-", true);
+    y += 4;
+
+    if (y > 262) { doc.addPage(); y = 18; }
+    doc.setFontSize(7.5); doc.setTextColor(110);
+    var note = "Method: swab blood = wet weight - dry weight, taking 1 g as 1 mL (Lee et al., Vet Surg 2006). Suction blood = canister volume - lavage volume. " +
+      "Allowable blood loss = EBV x (PCVstart - PCVmin) / mean PCV (Gross, Anesthesiology 1983; derived in human patients). " +
+      "Species blood volume defaults: " + (sp.ref || "not stated") + ". Estimates support clinical judgement and do not replace it.";
+    doc.text(doc.splitTextToSize(note, R - L), L, y);
+
+    var safe = (info.id || "case").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "case";
+    var dt = new Date(now);
+    var name = "BloodLoss_" + safe + "_" + dt.getFullYear() + d2(dt.getMonth() + 1) + d2(dt.getDate()) + "-" + d2(dt.getHours()) + d2(dt.getMinutes()) + ".pdf";
+    return { blob: doc.output("blob"), name: name };
+  }
+  window.TBLbuildReport = buildReport;
+
+  function repMsg(t, ok) { var m = $("repMsg"); m.textContent = t; m.hidden = !t; m.style.borderColor = ok ? "var(--ok)" : ""; m.style.color = ok ? "var(--ok)" : ""; }
+  function repInfo() {
+    if (c.example) { repMsg("This is the example case. Tap Start new case below before recording a real patient."); return null; }
+    var id = $("repId").value.trim();
+    if (!id) { repMsg("Add the patient name and hospital number first."); $("repId").focus(); return null; }
+    if (!window.TBL_PWA) { repMsg("Exporting works in the installed app. This preview page can't share or save files."); return null; }
+    var ana = $("repAna").value.trim(), tech = $("repTech").value.trim();
+    if (!ana || !tech) { repMsg("Add the " + (!ana && !tech ? "anaesthetist's and technician's names" : !ana ? "anaesthetist's name" : "technician's name") + " to authorise the report."); $(!ana ? "repAna" : "repTech").focus(); return null; }
+    return { id: id, proc: $("repProc").value.trim(), ana: ana, tech: tech };
+  }
+  function saveBlob(r) {
+    var url = URL.createObjectURL(r.blob), a = document.createElement("a");
+    a.href = url; a.download = r.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  }
+  $("repShare").addEventListener("click", function () {
+    var info = repInfo(); if (!info) return;
+    var r; try { r = buildReport(info); } catch (e) { repMsg("Couldn't create the PDF. Close and reopen the app, then try again."); return; }
+    var file = new File([r.blob], r.name, { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: r.name, text: "Intraoperative blood loss record: " + info.id })
+        .then(function () { repMsg("PDF ready to send: " + r.name, true); })
+        .catch(function (e) { if (e && e.name !== "AbortError") repMsg("Sharing didn't work. Use Save PDF to phone and attach it to an email instead."); });
+    } else {
+      saveBlob(r);
+      repMsg("This device can't share files from the app, so the PDF was saved instead (" + r.name + "). Attach it to an email from your files.");
+    }
+  });
+  $("repSave").addEventListener("click", function () {
+    var info = repInfo(); if (!info) return;
+    try { var r = buildReport(info); saveBlob(r); repMsg("Saved " + r.name, true); }
+    catch (e) { repMsg("Couldn't create the PDF. Close and reopen the app, then try again."); }
+  });
+
+  renderSpeciesDefaults(); renderTypes(); render();
+  setInterval(function () { if (c.started) render(); }, 60000);
+
+  if ("serviceWorker" in navigator && location.protocol === "https:" && window.TBL_PWA) {
+    try { navigator.serviceWorker.register("sw.js").catch(function () {}); } catch (e) {}
+  }
+})();
+</script>
+
+</body>
+</html>
